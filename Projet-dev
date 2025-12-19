@@ -1,0 +1,136 @@
+class Rentcar:
+
+    parc_automobile = []
+    clients = []
+    locations = []
+    tresorerie = 0
+
+    class Car:
+
+        def __init__(self, plaque, marque, model, annee, nb_km, etat, type, prix_achat):
+            self.plaque = plaque
+            self.marque = marque
+            self.model = model
+            self.annee = annee
+            self.nb_km = nb_km
+            self.etat = etat
+            self.type = type
+            self.prix_achat = prix_achat
+            self.disponible = True
+
+        def ajouter_voiture(self):
+            Rentcar.parc_automobile.append(self)
+
+        def retirer_voiture(self):
+            if self in Rentcar.parc_automobile:
+                Rentcar.parc_automobile.remove(self)
+
+        def constat(self, nouvel_etat):
+            self.etat = nouvel_etat
+
+    class Client:
+
+        def __init__(self, id_client, nom, prenom, telephone):
+            self.id_client = id_client
+            self.nom = nom
+            self.prenom = prenom
+            self.telephone = telephone
+            self.mode_paiement = None
+            self.montant_caution = 0
+
+        def choix_paiement(self, option):
+            # 1 = 50$/jour | 2 = 30$ + 1$/km
+            if option == 1:
+                self.mode_paiement = "50_par_jour"
+            elif option == 2:
+                self.mode_paiement = "30_plus_km"
+            else:
+                raise ValueError("Choix invalide")
+
+        def definir_caution(self, montant):
+            self.montant_caution = montant
+
+    class Location:
+
+        def __init__(self, car, client, date_de_depart, date_de_fin):
+            self.car = car
+            self.client = client
+            self.date_de_depart = date_de_depart
+            self.date_de_fin = date_de_fin
+            self.active = False
+            self.prix_total = 0
+
+        def creer_client(self):
+            if self.client not in Rentcar.clients:
+                Rentcar.clients.append(self.client)
+
+        def louer(self):
+            if not self.car.disponible:
+                raise Exception("Voiture non disponible")
+
+            self.car.disponible = False
+            self.active = True
+            Rentcar.locations.append(self)
+
+            # Encaissement de la caution
+            Rentcar.tresorerie += self.client.montant_caution
+
+        def calcul_prix(self, km_parcourus):
+            nb_jours = (self.date_de_fin - self.date_de_depart).days + 1
+
+            if self.client.mode_paiement == "50_par_jour":
+                self.prix_total = nb_jours * 50
+            elif self.client.mode_paiement == "30_plus_km":
+                self.prix_total = (nb_jours * 30) + km_parcourus
+            else:
+                raise Exception("Mode de paiement non défini")
+
+            return self.prix_total
+
+        def retourner(self, km_parcourus):
+            self.car.nb_km += km_parcourus
+            self.car.disponible = True
+            self.active = False
+
+            prix = self.calcul_prix(km_parcourus)
+
+            # Paiement de la location
+            Rentcar.tresorerie += prix
+
+            # Rendre la caution
+            Rentcar.tresorerie -= self.client.montant_caution
+
+            Rentcar.locations.remove(self)
+
+class Tresorerie:
+
+    def afficher_parc_automobile():
+        print("\n PARC AUTOMOBILE")
+        if not Rentcar.parc_automobile:
+            print("Aucune voiture")
+            return
+
+        for car in Rentcar.parc_automobile:
+            dispo = "Disponible" if car.disponible else "Louée"
+            print(f"{car.plaque} | {car.marque} {car.model} | {car.type} | {dispo}")
+
+    def afficher_clients():
+        print("\n LISTE DES CLIENTS")
+        if not Rentcar.clients:
+            print("Aucun client")
+            return
+
+        for client in Rentcar.clients:
+            print(f"ID:{client.id_client} | {client.nom} {client.prenom} | {client.telephone}")
+
+    def afficher_tresorerie():
+        print("\n TRÉSORERIE")
+        print(f"Solde actuel : {Rentcar.tresorerie} $")
+
+    def acheter_voiture(car):
+        if Rentcar.tresorerie >= car.prix_achat:
+            Rentcar.tresorerie -= car.prix_achat
+            car.ajouter_voiture()
+            print("Voiture achetée avec succès")
+        else:
+            print("Fonds insuffisants pour acheter la voiture")
